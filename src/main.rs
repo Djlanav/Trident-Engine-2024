@@ -1,5 +1,6 @@
 mod gl_loading;
 mod shader_management;
+mod shader_errors;
 
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
