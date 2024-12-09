@@ -7,6 +7,7 @@ use std::io::Read;
 use std::path::Path;
 use std::ptr;
 
+#[derive(Clone)]
 pub enum ShaderType {
     Vertex,
     Fragment,
@@ -17,10 +18,18 @@ pub struct ShaderProgram {
     shaders: Vec<Shader>,
 }
 
+impl Drop for ShaderProgram {
+    fn drop(&mut self) {
+        unsafe {
+            gl::DeleteProgram(self.program_id);
+        }
+    }
+}
+
 impl ShaderProgram {
     pub fn new(shaders: &[Shader]) -> Self {
         let program_id = unsafe { gl::CreateProgram() };
-        let shaders = shaders.into_vec();
+        let shaders = shaders.to_vec();
 
         for shader in shaders.iter() {
             unsafe {
@@ -33,11 +42,56 @@ impl ShaderProgram {
             shaders,
         }
     }
+
+    pub fn link(&self) {
+        let program_id = self.program_id;
+        let mut link_status = 0;
+        let mut log_length = 0;
+
+        unsafe {
+            gl::LinkProgram(program_id);
+            gl::GetProgramiv(program_id, gl::LINK_STATUS, &mut link_status);
+            gl::GetProgramiv(program_id, gl::INFO_LOG_LENGTH, &mut log_length);
+
+            if link_status != gl::TRUE as i32 {
+                let mut written_len = 0;
+                let mut buffer: Vec<u8> = Vec::with_capacity(log_length as usize);
+
+                gl::GetProgramInfoLog(
+                    program_id,
+                    log_length,
+                    &mut written_len,
+                    buffer.as_mut_ptr() as *mut GLchar,
+                );
+
+                if let Ok(log) = CStr::from_ptr(buffer.as_ptr() as *const GLchar).to_str() {
+                    println!("An error occurred in linking the shader program! ERROR: {}", log);
+                }
+            } else {
+                println!("Shader program linked successfully");
+            }
+        }
+    }
+
+    pub fn use_program(&self) {
+        unsafe {
+            gl::UseProgram(self.program_id);
+        }
+    }
 }
 
+#[derive(Clone)]
 pub struct Shader {
     pub shader_type: ShaderType,
     pub shader_id: u32,
+}
+
+impl Drop for Shader {
+    fn drop(&mut self) {
+        unsafe {
+            gl::DeleteShader(self.shader_id);
+        }
+    }
 }
 
 impl Shader {
@@ -63,7 +117,7 @@ impl Shader {
                     shader_id,
                     log_length,
                     &mut written_len,
-                    buffer.as_mut_ptr() as *mut GLchar,);
+                    buffer.as_mut_ptr() as *mut GLchar, );
 
                 if let Ok(log) = CStr::from_ptr(buffer.as_ptr() as *const GLchar).to_str() {
                     println!("An error occurred in shader compilation: {}", log);
@@ -83,7 +137,8 @@ impl Shader {
     /// `"shaders/some_dir/my_shader.glsl"` where a programmer need only provide
     /// `some_dir/my_shader.glsl`
     pub fn load_shader_source(source_path: &str) -> Result<String, Box<dyn Error>> {
-        let shader_path = Path::new(&format!("shaders/{}", source_path));
+        let formatted_path = format!("shaders/{}", source_path);
+        let shader_path = Path::new(&formatted_path);
         let mut shader_file = File::open(shader_path)?;
         let mut source_string = String::new();
 
