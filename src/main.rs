@@ -1,110 +1,73 @@
 mod gl_loading;
 mod shader_management;
 mod shader_errors;
+mod application;
+mod opengl_utils;
 
 use std::error::Error;
-use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
-use sdl2::video::{GLContext, Window};
-use sdl2::{EventPump, Sdl, VideoSubsystem};
+use crate::application::Application;
+use crate::gl_loading::{VertexArrayObject, VertexAttributePointer, VertexBufferObject};
+use crate::shader_management::{Shader, ShaderProgram, ShaderType};
 
-struct Application {
-    sdl_context: Sdl,
-    video: VideoSubsystem,
-    window: Window,
-    gl_context: GLContext,
-    event_pump: EventPump,
-}
+fn make_shader_stuff() -> ShaderProgram{
+    let vertex_source = Shader::load_shader_source("main_vertex.glsl")
+        .expect("Could not load vertex shade source");
+    let fragment_source = Shader::load_shader_source("main_fragment.glsl")
+        .expect("Could not load fragment shader source");
 
-impl Application {
-    fn init() -> Result<(Sdl, VideoSubsystem, Window), Box<dyn Error>> {
-        let sdl = sdl2::init()?;
-        let video = sdl.video()?;
+    let vertex_shader = Shader::new(ShaderType::Vertex, vertex_source);
+    let fragment_shader = Shader::new(ShaderType::Fragment, fragment_source);
 
-        let gl_attr = video.gl_attr();
-        gl_attr.set_context_profile(sdl2::video::GLProfile::Core);
-        gl_attr.set_context_version(4, 5);
+    let shaders = [vertex_shader, fragment_shader];
+    let shader_program = ShaderProgram::new(&shaders);
+    shader_program.link();
 
-        let window = video
-            .window("rust-sdl2", 800, 600)
-            .position_centered()
-            .opengl()
-            .resizable()
-            .build()?;
-
-        Ok((sdl, video, window))
-    }
-
-    pub fn new() -> Result<Self, dyn Error> {
-        let (sdl_context, video, window) = Self::init()
-            .expect("Failed to init SDL");
-
-        let gl_context = window.gl_create_context()?;
-        gl::load_with(|name| video.gl_get_proc_address(name) as *const _);
-
-        let event_pump = sdl_context.event_pump()?;
-
-        Ok(Self {
-            sdl_context,
-            video,
-            window,
-            gl_context,
-            event_pump,
-        })
-    }
-
-    pub fn run(&self) -> Result<(), Box<dyn Error>> {
-        let mut event_pump = &self.event_pump;
-        let window = &self.window;
-
-        'main: loop {
-            for event in event_pump.poll_iter() {
-
-            }
-
-            window.gl_swap_window();
-        }
-    }
+    shader_program
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let sdl_context = sdl2::init()?;
-    let video_subsystem = sdl_context.video()?;
+    env_logger::init();
 
-    // OpenGL Attribs
-    let gl_attr = video_subsystem.gl_attr();
-    gl_attr.set_context_profile(sdl2::video::GLProfile::Core);
-    gl_attr.set_context_version(4, 1);
+    let mut application = Application::new().expect("Failed to init SDL");
+    let vertices = [
+        -0.5f32, 0.5, 0.0,
+        -0.5, -0.5, 0.0,
+        0.5, -0.5, 0.0,
+        0.5, 0.5, 0.0,
+    ];
 
-    let window = video_subsystem
-        .window("rust-sdl2 demo", 800, 600)
-        .position_centered()
-        .opengl()
-        .resizable()
-        .build()?;
+    let attrib_vec: Vec<VertexAttributePointer> = Vec::new();
 
-    let _gl_context = window.gl_create_context()?;
-    gl::load_with(|s| video_subsystem.gl_get_proc_address(s) as *const _);
+    let mut vao = VertexArrayObject::new(attrib_vec);
+    vao.bind();
 
-    let mut event_pump = sdl_context.event_pump()?;
-    unsafe {
-        gl::ClearColor(0.0, 0.6, 0.8, 1.0);
-    }
+    let vbo = VertexBufferObject::new(&vertices);
+    vbo.bind();
 
-    'main: loop {
-        for event in event_pump.poll_iter() {
-            match event {
-                Event::KeyDown { keycode: Some(Keycode::Escape), .. } => { break 'main; }
-                _ => {}
-            }
-        }
+    let attrib_ptr = VertexAttributePointer::new((
+        0,
+        3,
+        gl::FLOAT,
+        gl::FALSE,
+        (3 * size_of::<f32>()) as gl::types::GLsizei,
+        0
+    ));
+
+    vao.add_attrib_pointer(attrib_ptr);
+    vao.enable_attrib_pointers();
+
+    let shader_program = make_shader_stuff();
+    shader_program.use_program();
+
+    application.run(|| {
+
 
         unsafe {
-            gl::Clear(gl::COLOR_BUFFER_BIT);
+            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+            gl::DrawArrays(gl::TRIANGLES, 0, vertices.len() as gl::types::GLsizei);
         }
 
-        window.gl_swap_window();
-    }
+    }).expect("Failed to run SDL application");
 
     Ok(())
 }

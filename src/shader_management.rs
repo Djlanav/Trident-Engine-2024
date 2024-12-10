@@ -6,6 +6,8 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use std::ptr;
+use log::{error, info};
+use crate::opengl_utils;
 
 #[derive(Clone)]
 pub enum ShaderType {
@@ -20,8 +22,18 @@ pub struct ShaderProgram {
 
 impl Drop for ShaderProgram {
     fn drop(&mut self) {
+        for shader in self.shaders.iter() {
+            unsafe {
+                gl::DetachShader(self.program_id, shader.shader_id);
+                gl::DeleteShader(shader.shader_id);
+            }
+        }
+
         unsafe {
             gl::DeleteProgram(self.program_id);
+
+            #[cfg(debug_assertions)]
+            opengl_utils::check_opengl_error();
         }
     }
 }
@@ -65,10 +77,10 @@ impl ShaderProgram {
                 );
 
                 if let Ok(log) = CStr::from_ptr(buffer.as_ptr() as *const GLchar).to_str() {
-                    println!("An error occurred in linking the shader program! ERROR: {}", log);
+                    error!("An error occurred in linking the shader program! ERROR: {}", log);
                 }
             } else {
-                println!("Shader program linked successfully");
+                info!("Shader program linked successfully");
             }
         }
     }
@@ -84,14 +96,6 @@ impl ShaderProgram {
 pub struct Shader {
     pub shader_type: ShaderType,
     pub shader_id: u32,
-}
-
-impl Drop for Shader {
-    fn drop(&mut self) {
-        unsafe {
-            gl::DeleteShader(self.shader_id);
-        }
-    }
 }
 
 impl Shader {
@@ -120,10 +124,10 @@ impl Shader {
                     buffer.as_mut_ptr() as *mut GLchar, );
 
                 if let Ok(log) = CStr::from_ptr(buffer.as_ptr() as *const GLchar).to_str() {
-                    println!("An error occurred in shader compilation: {}", log);
+                    info!("An error occurred in shader compilation: {}", log);
                 }
             } else {
-                println!("Shader compilation successful");
+                info!("Shader compilation successful");
             }
         }
     }
@@ -136,8 +140,22 @@ impl Shader {
     /// `source_path` string. That is appended automatically. Thus, the final string would be:
     /// `"shaders/some_dir/my_shader.glsl"` where a programmer need only provide
     /// `some_dir/my_shader.glsl`
+    #[cfg(debug_assertions)]
     pub fn load_shader_source(source_path: &str) -> Result<String, Box<dyn Error>> {
-        let formatted_path = format!("shaders/{}", source_path);
+        let formatted_path = format!("src/shaders/{}", source_path.to_string());
+
+        let shader_path = Path::new(&formatted_path);
+        let mut shader_file = File::open(shader_path)?;
+        let mut source_string = String::new();
+
+        shader_file.read_to_string(&mut source_string)?;
+
+        Ok(source_string)
+    }
+    #[cfg(not(debug_assertions))]
+    pub fn load_shader_source(source_path: &str) -> Result<String, Box<dyn Error>> {
+        let formatted_path = format!("shaders/{}", source_path.to_string());
+
         let shader_path = Path::new(&formatted_path);
         let mut shader_file = File::open(shader_path)?;
         let mut source_string = String::new();
@@ -161,7 +179,7 @@ impl Shader {
                 if shader_id != 0 {
                     Self::compile_shader(shader_id, &shader_source);
                 } else {
-                    println!("gl::CreateShader failed for type VERTEX_SHADER!");
+                    error!("gl::CreateShader failed for type VERTEX_SHADER!");
                 }
             },
             ShaderType::Fragment => {
@@ -172,7 +190,7 @@ impl Shader {
                 if shader_id != 0 {
                     Self::compile_shader(shader_id, &shader_source);
                 } else {
-                    println!("gl::CreateShader failed for type FRAGMENT_SHADER!");
+                    error!("gl::CreateShader failed for type FRAGMENT_SHADER!");
                 }
             }
         }

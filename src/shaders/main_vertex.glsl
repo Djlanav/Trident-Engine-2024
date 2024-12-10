@@ -1,6 +1,6 @@
-#version 410 core
+#version 450 core
 
-in vec3 vertex_positions;
+layout (location = 0) in vec3 vertex_positions;
 
 out vec3 output_color;
 
