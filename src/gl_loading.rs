@@ -1,41 +1,68 @@
+use std::any::{Any, TypeId};
 use std::os::raw::c_void;
 use gl::types::{GLboolean, GLenum, GLsizei};
 use crate::opengl_utils;
 
-pub trait BufferObject {
-    fn bind(&self);
-    fn unbind(&self);
+pub enum BufferType {
+    ArrayBuffer,
+    ElementArrayBuffer,
 }
 
-pub struct VertexBufferObject<'buffer_lifetime> {
+pub struct BufferObject<'buffer_lifetime, T>
+where
+    T: Sized + 'static
+{
     id: u32,
-    data: &'buffer_lifetime [f32]
+    buffer_type: BufferType,
+    data: &'buffer_lifetime [T],
 }
 
-impl<'buffer_lifetime> VertexBufferObject<'buffer_lifetime> {
-    pub fn new(data: &'buffer_lifetime [f32]) -> Self {
+impl<'buffer_lifetime, T: 'static> BufferObject<'buffer_lifetime, T> {
+    pub fn new(data: &'buffer_lifetime [T], buffer_type: BufferType) -> Self {
         assert!(!data.is_empty());
         let mut id = 0;
 
         unsafe {
-            gl::GenBuffers(1, &mut id);
-            gl::BindBuffer(gl::ARRAY_BUFFER, id);
-            gl::BufferData(
-                gl::ARRAY_BUFFER,
-                size_of_val(data) as isize,
-                data.as_ptr() as *const c_void,
-                gl::STATIC_DRAW);
+            match buffer_type {
+                BufferType::ArrayBuffer => {
+                    gl::GenBuffers(1, &mut id);
+                    gl::BindBuffer(gl::ARRAY_BUFFER, id);
+                    gl::BufferData(
+                        gl::ARRAY_BUFFER,
+                        size_of_val(data) as isize,
+                        data.as_ptr() as *const c_void,
+                        gl::STATIC_DRAW);
+                },
+                BufferType::ElementArrayBuffer => {
+                    gl::GenBuffers(1, &mut id);
+                    gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, id);
+
+                    let any_value = &data[0] as &dyn Any;
+                    if any_value.is::<f32>() {
+                        panic!("Element array buffer cannot contain f32 values");
+                    }
+
+                    gl::BufferData(
+                        gl::ELEMENT_ARRAY_BUFFER,
+                        size_of_val(data) as isize,
+                        data.as_ptr() as *const c_void,
+                        gl::STATIC_DRAW);
+                },
+            }
 
             #[cfg(debug_assertions)]
             opengl_utils::check_opengl_error();
         }
 
-        Self {id, data}
+        Self {id, data, buffer_type}
     }
 
     pub fn bind(&self) {
         unsafe {
-            gl::BindBuffer(gl::ARRAY_BUFFER, self.id);
+            match self.buffer_type {
+                BufferType::ArrayBuffer => gl::BindBuffer(gl::ARRAY_BUFFER, self.id),
+                BufferType::ElementArrayBuffer => gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, self.id),
+            }
 
             #[cfg(debug_assertions)]
             opengl_utils::check_opengl_error();
@@ -44,7 +71,10 @@ impl<'buffer_lifetime> VertexBufferObject<'buffer_lifetime> {
 
     pub fn unbind(&self) {
         unsafe {
-            gl::BindBuffer(gl::ARRAY_BUFFER, 0);
+            match self.buffer_type {
+                BufferType::ArrayBuffer => gl::BindBuffer(gl::ARRAY_BUFFER, 0),
+                BufferType::ElementArrayBuffer => gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, 0),
+            }
 
             #[cfg(debug_assertions)]
             opengl_utils::check_opengl_error();
@@ -52,7 +82,7 @@ impl<'buffer_lifetime> VertexBufferObject<'buffer_lifetime> {
     }
 }
 
-impl Drop for VertexBufferObject<'_> {
+impl<T: 'static> Drop for BufferObject<'_, T> {
     fn drop(&mut self) {
         self.unbind();
 

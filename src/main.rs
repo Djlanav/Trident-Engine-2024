@@ -6,7 +6,7 @@ mod opengl_utils;
 
 use std::error::Error;
 use crate::application::Application;
-use crate::gl_loading::{VertexArrayObject, VertexAttributePointer, VertexBufferObject};
+use crate::gl_loading::{VertexArrayObject, VertexAttributePointer, BufferObject, BufferType};
 use crate::shader_management::{Shader, ShaderProgram, ShaderType};
 
 fn make_shader_stuff() -> ShaderProgram{
@@ -30,10 +30,15 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut application = Application::new().expect("Failed to init SDL");
     let vertices = [
-        -0.5f32, 0.5, 0.0,
-        -0.5, -0.5, 0.0,
-        0.5, -0.5, 0.0,
-        0.5, 0.5, 0.0,
+        -0.5f32, 0.5, 0.0, // 0
+        -0.5, -0.5, 0.0, // 1
+        0.5, -0.5, 0.0, // 2
+        0.5, 0.5, 0.0, // 3
+    ];
+
+    let indicies = [
+        0u32, 1, 2,
+        2, 3, 0,
     ];
 
     let attrib_vec: Vec<VertexAttributePointer> = Vec::new();
@@ -41,8 +46,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut vao = VertexArrayObject::new(attrib_vec);
     vao.bind();
 
-    let vbo = VertexBufferObject::new(&vertices);
+    let vbo = BufferObject::new(&vertices, BufferType::ArrayBuffer);
+    let ebo = BufferObject::new(&indicies, BufferType::ElementArrayBuffer);
     vbo.bind();
+    ebo.bind();
 
     let attrib_ptr = VertexAttributePointer::new((
         0,
@@ -64,7 +71,11 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         unsafe {
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-            gl::DrawArrays(gl::TRIANGLES, 0, vertices.len() as gl::types::GLsizei);
+            gl::DrawElements(
+                gl::TRIANGLES,
+                indicies.len() as i32,
+                gl::UNSIGNED_INT,
+                std::ptr::null())
         }
 
     }).expect("Failed to run SDL application");
