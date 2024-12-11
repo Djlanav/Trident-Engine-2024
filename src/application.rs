@@ -22,7 +22,7 @@ impl Application {
         gl_attr.set_context_version(4, 5);
 
         let window = video
-            .window("rust-sdl2", 800, 600)
+            .window("Trident Engine - OpenGL 4.5", 800, 600)
             .position_centered()
             .opengl()
             .resizable()
@@ -53,7 +53,7 @@ impl Application {
     where
         F: FnMut()
     {
-        let mut event_pump = &mut self.event_pump;
+        let event_pump = &mut self.event_pump;
         let window = &self.window;
 
         unsafe {
@@ -63,7 +63,15 @@ impl Application {
         'main: loop {
             for event in event_pump.poll_iter() {
                 match event {
-                    Event::KeyDown { keycode: Some(Keycode::Escape), .. } => { break 'main; }
+                    Event::KeyDown { keycode: Some(Keycode::Escape), .. } => { break 'main; },
+                    Event::Window {
+                        win_event: sdl2::event::WindowEvent::Resized(w, h),
+                        ..
+                    } => {
+                        unsafe {
+                            gl::Viewport(0, 0, w, h);
+                        }
+                    }
                     _ => {}
                 }
             }

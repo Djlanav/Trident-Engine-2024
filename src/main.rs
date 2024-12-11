@@ -3,9 +3,12 @@ mod shader_management;
 mod shader_errors;
 mod application;
 mod opengl_utils;
+mod engine_types;
+mod macros;
 
 use std::error::Error;
 use crate::application::Application;
+use crate::engine_types::{Vector3, Vector4};
 use crate::gl_loading::{VertexArrayObject, VertexAttributePointer, BufferObject, BufferType};
 use crate::shader_management::{Shader, ShaderProgram, ShaderType};
 
@@ -36,7 +39,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         0.5, 0.5, 0.0, // 3
     ];
 
-    let indicies = [
+    let indices = [
         0u32, 1, 2,
         2, 3, 0,
     ];
@@ -47,7 +50,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     vao.bind();
 
     let vbo = BufferObject::new(&vertices, BufferType::ArrayBuffer);
-    let ebo = BufferObject::new(&indicies, BufferType::ElementArrayBuffer);
+    let ebo = BufferObject::new(&indices, BufferType::ElementArrayBuffer);
     vbo.bind();
     ebo.bind();
 
@@ -63,17 +66,20 @@ fn main() -> Result<(), Box<dyn Error>> {
     vao.add_attrib_pointer(attrib_ptr);
     vao.enable_attrib_pointers();
 
-    let shader_program = make_shader_stuff();
+    let mut shader_program = make_shader_stuff();
+
+    let my_vector = Vector4::new(1.0, 0.0, 0.0, 0.0);
+    shader_program.get_uniform_locations(&["u_Color"]);
     shader_program.use_program();
 
     application.run(|| {
-
+        shader_program.set_uniform_vec4("u_Color", &my_vector);
 
         unsafe {
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
             gl::DrawElements(
                 gl::TRIANGLES,
-                indicies.len() as i32,
+                indices.len() as i32,
                 gl::UNSIGNED_INT,
                 std::ptr::null())
         }

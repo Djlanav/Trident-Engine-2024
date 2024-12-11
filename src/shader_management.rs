@@ -1,13 +1,17 @@
+use std::collections::HashMap;
 use gl::{FRAGMENT_SHADER, VERTEX_SHADER};
 use gl::types::GLchar;
 use std::error::Error;
 use std::ffi::{CStr, CString};
 use std::fs::File;
 use std::io::Read;
+use std::ops::MulAssign;
 use std::path::Path;
 use std::ptr;
 use log::{error, info};
+use crate::engine_types::{FloatingPoint, Vector4};
 use crate::opengl_utils;
+use crate::opengl_utils::check_gl;
 
 #[derive(Clone)]
 pub enum ShaderType {
@@ -18,6 +22,7 @@ pub enum ShaderType {
 pub struct ShaderProgram {
     program_id: u32,
     shaders: Vec<Shader>,
+    uniforms: HashMap<String, i32>,
 }
 
 impl Drop for ShaderProgram {
@@ -32,8 +37,7 @@ impl Drop for ShaderProgram {
         unsafe {
             gl::DeleteProgram(self.program_id);
 
-            #[cfg(debug_assertions)]
-            opengl_utils::check_opengl_error();
+            check_gl();
         }
     }
 }
@@ -52,6 +56,7 @@ impl ShaderProgram {
         Self {
             program_id,
             shaders,
+            uniforms: HashMap::new(),
         }
     }
 
@@ -89,6 +94,40 @@ impl ShaderProgram {
         unsafe {
             gl::UseProgram(self.program_id);
         }
+    }
+
+    pub fn get_uniform_locations(&mut self, names: &[&str]) {
+        for uname in names {
+            let (uniform_name, location) = match self.get_uniform_location(uname) {
+                Some(uniform) => uniform,
+                None => continue,
+            };
+
+            self.uniforms.insert(uniform_name, location);
+        }
+    }
+
+    pub fn set_uniform_vec4(&self, location: &str, vector: &Vector4<f32>) {
+        let location_int = self.uniforms.get(location).unwrap();
+        unsafe {
+            gl::Uniform4f(*location_int, vector.x, vector.y, vector.z, vector.w);
+            check_gl();
+        }
+    }
+
+    fn get_uniform_location(&self, uniform_name: &str) -> Option<(String, i32)> {
+        let uname_string = String::from(uniform_name);
+        let uname_cstr = CString::new(uname_string.as_bytes()).unwrap();
+        unsafe {
+            let location = gl::GetUniformLocation(self.program_id, uname_cstr.as_ptr());
+            check_gl();
+
+            if location != 0 {
+                return Some((uname_string, location));
+            }
+        }
+
+        None
     }
 }
 

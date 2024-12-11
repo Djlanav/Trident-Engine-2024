@@ -1,7 +1,7 @@
-use gl::types::GLenum;
-use log::{error, info, warn};
+use log::{error, info};
 
-pub fn check_opengl_error() {
+#[cfg(debug_assertions)]
+fn check_opengl_error() {
     unsafe {
         let gl_error = gl::GetError();
 
@@ -16,5 +16,12 @@ pub fn check_opengl_error() {
             gl::STACK_OVERFLOW => error!("OpenGL stack overflow"),
             _ => panic!("OpenGL error: {}", gl_error)
         }
+    }
+}
+
+#[inline(always)]
+pub fn check_gl() {
+    if cfg!(debug_assertions) {
+        check_opengl_error();
     }
 }

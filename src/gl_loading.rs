@@ -2,6 +2,7 @@ use std::any::{Any, TypeId};
 use std::os::raw::c_void;
 use gl::types::{GLboolean, GLenum, GLsizei};
 use crate::opengl_utils;
+use crate::opengl_utils::check_gl;
 
 pub enum BufferType {
     ArrayBuffer,
@@ -50,8 +51,7 @@ impl<'buffer_lifetime, T: 'static> BufferObject<'buffer_lifetime, T> {
                 },
             }
 
-            #[cfg(debug_assertions)]
-            opengl_utils::check_opengl_error();
+            check_gl();
         }
 
         Self {id, data, buffer_type}
@@ -64,8 +64,7 @@ impl<'buffer_lifetime, T: 'static> BufferObject<'buffer_lifetime, T> {
                 BufferType::ElementArrayBuffer => gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, self.id),
             }
 
-            #[cfg(debug_assertions)]
-            opengl_utils::check_opengl_error();
+            check_gl();
         }
     }
 
@@ -76,8 +75,7 @@ impl<'buffer_lifetime, T: 'static> BufferObject<'buffer_lifetime, T> {
                 BufferType::ElementArrayBuffer => gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, 0),
             }
 
-            #[cfg(debug_assertions)]
-            opengl_utils::check_opengl_error();
+            check_gl();
         }
     }
 }
@@ -89,8 +87,7 @@ impl<T: 'static> Drop for BufferObject<'_, T> {
         unsafe {
             gl::DeleteBuffers(1, &self.id);
 
-            #[cfg(debug_assertions)]
-            opengl_utils::check_opengl_error();
+            check_gl();
         }
     }
 }
@@ -106,8 +103,7 @@ impl VertexArrayObject {
         unsafe {
             gl::GenVertexArrays(1, &mut id);
 
-            #[cfg(debug_assertions)]
-            opengl_utils::check_opengl_error();
+            check_gl();
         }
 
         Self {
@@ -129,8 +125,7 @@ impl VertexArrayObject {
         unsafe {
             gl::BindVertexArray(self.id);
 
-            #[cfg(debug_assertions)]
-            opengl_utils::check_opengl_error();
+            check_gl();
         }
     }
 
@@ -138,8 +133,7 @@ impl VertexArrayObject {
         unsafe {
             gl::BindVertexArray(0);
 
-            #[cfg(debug_assertions)]
-            opengl_utils::check_opengl_error();
+            check_gl();
         }
     }
 }
@@ -151,8 +145,7 @@ impl Drop for VertexArrayObject {
         unsafe {
             gl::DeleteVertexArrays(1, &self.id);
 
-            #[cfg(debug_assertions)]
-            opengl_utils::check_opengl_error();
+            check_gl();
         }
     }
 }
@@ -179,8 +172,7 @@ impl VertexAttributePointer {
             // TODO: Fix invalid OpenGL operation error caused by this call
             gl::VertexAttribPointer(index, size, data_type, normalized, stride, offset as *const c_void);
 
-            #[cfg(debug_assertions)]
-            opengl_utils::check_opengl_error();
+            check_gl();
         }
 
         Self {
@@ -197,8 +189,7 @@ impl VertexAttributePointer {
         unsafe {
             gl::EnableVertexAttribArray(self.index);
 
-            #[cfg(debug_assertions)]
-            opengl_utils::check_opengl_error();
+            check_gl();
         }
     }
 }
