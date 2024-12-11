@@ -1,8 +1,7 @@
-use std::any::{Any, TypeId};
-use std::os::raw::c_void;
-use gl::types::{GLboolean, GLenum, GLsizei};
-use crate::opengl_utils;
 use crate::opengl_utils::check_gl;
+use gl::types::{GLboolean, GLenum, GLsizei};
+use std::any::Any;
+use std::os::raw::c_void;
 
 pub enum BufferType {
     ArrayBuffer,

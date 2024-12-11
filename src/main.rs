@@ -7,6 +7,7 @@ mod engine_types;
 mod macros;
 
 use std::error::Error;
+use std::ops::Add;
 use crate::application::Application;
 use crate::engine_types::{Vector3, Vector4};
 use crate::gl_loading::{VertexArrayObject, VertexAttributePointer, BufferObject, BufferType};
@@ -68,12 +69,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut shader_program = make_shader_stuff();
 
-    let my_vector = Vector4::new(1.0, 0.0, 0.0, 0.0);
+    let mut my_vector = Vector3::new(0.5, 0.0, 0.7);
     shader_program.get_uniform_locations(&["u_Color"]);
     shader_program.use_program();
 
     application.run(|| {
-        shader_program.set_uniform_vec4("u_Color", &my_vector);
+        shader_program.set_uniform_vec3("u_Color", &my_vector);
 
         unsafe {
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);

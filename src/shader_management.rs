@@ -5,12 +5,10 @@ use std::error::Error;
 use std::ffi::{CStr, CString};
 use std::fs::File;
 use std::io::Read;
-use std::ops::MulAssign;
 use std::path::Path;
 use std::ptr;
 use log::{error, info};
-use crate::engine_types::{FloatingPoint, Vector4};
-use crate::opengl_utils;
+use crate::engine_types::{Vector3, Vector4};
 use crate::opengl_utils::check_gl;
 
 #[derive(Clone)]
@@ -98,12 +96,15 @@ impl ShaderProgram {
 
     pub fn get_uniform_locations(&mut self, names: &[&str]) {
         for uname in names {
-            let (uniform_name, location) = match self.get_uniform_location(uname) {
-                Some(uniform) => uniform,
-                None => continue,
-            };
-
+            let (uniform_name, location) = self.get_uniform_location(uname);
             self.uniforms.insert(uniform_name, location);
+        }
+    }
+
+    pub fn set_uniform_vec3(&self, location: &str, vector: &Vector3<f32>) {
+        let location_int = self.uniforms.get(location).unwrap();
+        unsafe {
+            gl::Uniform3f(*location_int, vector.x, vector.y, vector.z);
         }
     }
 
@@ -115,19 +116,15 @@ impl ShaderProgram {
         }
     }
 
-    fn get_uniform_location(&self, uniform_name: &str) -> Option<(String, i32)> {
+    fn get_uniform_location(&self, uniform_name: &str) -> (String, i32) {
         let uname_string = String::from(uniform_name);
         let uname_cstr = CString::new(uname_string.as_bytes()).unwrap();
         unsafe {
             let location = gl::GetUniformLocation(self.program_id, uname_cstr.as_ptr());
             check_gl();
 
-            if location != 0 {
-                return Some((uname_string, location));
-            }
+            (uname_string, location)
         }
-
-        None
     }
 }
 
