@@ -1,10 +1,10 @@
 [package]
-name = "trident_engine"
+name = "trident-engine-2024"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-sdl2 = { version = "0.37.0", features = ["bundled"] }
+sdl2 = { version = "0.37.0", features = ["image"] }
 gl = "0.14.0"
 env_logger = "0.11.5"
 log = "0.4.22"

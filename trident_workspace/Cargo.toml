@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "trident-engine-2024"
+]
+resolver = "2"

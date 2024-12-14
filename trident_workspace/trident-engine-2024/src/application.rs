@@ -1,4 +1,5 @@
 use std::error::Error;
+use log::info;
 use sdl2::{EventPump, Sdl, VideoSubsystem};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -10,6 +11,7 @@ pub struct Application {
     window: Window,
     gl_context: GLContext,
     event_pump: EventPump,
+    running: bool,
 }
 
 impl Application {
@@ -21,8 +23,13 @@ impl Application {
         gl_attr.set_context_profile(sdl2::video::GLProfile::Core);
         gl_attr.set_context_version(4, 5);
 
+        let (minor, major) = gl_attr.context_version();
+
         let window = video
-            .window("Trident Engine - OpenGL 4.5", 800, 600)
+            .window(
+                format!("Trident Engine - OpenGL").as_str(),
+                800,
+                600)
             .position_centered()
             .opengl()
             .resizable()
@@ -38,6 +45,7 @@ impl Application {
         let gl_context = window.gl_create_context()?;
         gl::load_with(|name| video.gl_get_proc_address(name) as *const _);
 
+
         let event_pump = sdl_context.event_pump()?;
 
         Ok(Self {
@@ -46,24 +54,26 @@ impl Application {
             window,
             gl_context,
             event_pump,
+            running: false,
         })
     }
 
     pub fn run<F>(&mut self, mut main_closure: F) -> Result<(), Box<dyn Error>>
     where
-        F: FnMut()
+        F: FnMut(&mut Window)
     {
+        self.running = true;
         let event_pump = &mut self.event_pump;
-        let window = &self.window;
+        // let window = &self.window;
 
         unsafe {
             gl::ClearColor(0.0, 0.6, 0.8, 1.0);
         }
 
-        'main: loop {
+        while self.running {
             for event in event_pump.poll_iter() {
                 match event {
-                    Event::KeyDown { keycode: Some(Keycode::Escape), .. } => { break 'main; },
+                    Event::KeyDown { keycode: Some(Keycode::Escape), .. } => { self.running = false; },
                     Event::Window {
                         win_event: sdl2::event::WindowEvent::Resized(w, h),
                         ..
@@ -76,9 +86,9 @@ impl Application {
                 }
             }
 
-            main_closure();
+            main_closure(&mut self.window);
 
-            window.gl_swap_window();
+            self.window.gl_swap_window();
         }
 
         Ok(())

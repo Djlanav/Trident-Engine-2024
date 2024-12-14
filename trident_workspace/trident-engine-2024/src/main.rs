@@ -5,9 +5,13 @@ mod application;
 mod opengl_utils;
 mod engine_types;
 mod macros;
+mod client;
 
 use std::error::Error;
 use std::ops::Add;
+use std::thread;
+use std::time::{Duration, Instant};
+use log::info;
 use crate::application::Application;
 use crate::engine_types::{Vector3, Vector4};
 use crate::gl_loading::{VertexArrayObject, VertexAttributePointer, BufferObject, BufferType};
@@ -34,10 +38,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut application = Application::new().expect("Failed to init SDL");
     let vertices = [
-        -0.5f32, 0.5, 0.0, // 0
-        -0.5, -0.5, 0.0, // 1
-        0.5, -0.5, 0.0, // 2
-        0.5, 0.5, 0.0, // 3
+        -0.5f32, 0.5, 0.0, 1.0, 0.0, 0.0, // Vertex 0
+        -0.5, -0.5, 0.0, 0.0, 1.0, 0.0, // Vertex 1
+        0.5, -0.5, 0.0, 0.0, 0.0, 1.0, // Vertex 2
+        0.5, 0.5, 0.0, 0.0, 0.0, 0.0 // Vertex 3
     ];
 
     let indices = [
@@ -45,35 +49,35 @@ fn main() -> Result<(), Box<dyn Error>> {
         2, 3, 0,
     ];
 
-    let attrib_vec: Vec<VertexAttributePointer> = Vec::new();
-
-    let mut vao = VertexArrayObject::new(attrib_vec);
-    vao.bind();
+    let mut vao = VertexArrayObject::new(vec![
+        VertexAttributePointer::new((0, 3, gl::FLOAT, gl::FALSE, 6 * size_of::<f32>(), 0)),
+        VertexAttributePointer::new((1, 3, gl::FLOAT, gl::FALSE, 6 * size_of::<f32>(), 3 * size_of::<f32>())),
+    ]);
 
     let vbo = BufferObject::new(&vertices, BufferType::ArrayBuffer);
     let ebo = BufferObject::new(&indices, BufferType::ElementArrayBuffer);
+
+    vao.bind();
     vbo.bind();
     ebo.bind();
 
-    let attrib_ptr = VertexAttributePointer::new((
-        0,
-        3,
-        gl::FLOAT,
-        gl::FALSE,
-        (3 * size_of::<f32>()) as gl::types::GLsizei,
-        0
-    ));
-
-    vao.add_attrib_pointer(attrib_ptr);
+    vao.set_attrib_pointer(0);
+    vao.set_attrib_pointer(1);
     vao.enable_attrib_pointers();
 
     let mut shader_program = make_shader_stuff();
 
-    let mut my_vector = Vector3::new(0.5, 0.0, 0.7);
+    let my_vector = Vector3::new(0.5, 0.0, 0.7);
     shader_program.get_uniform_locations(&["u_Color"]);
     shader_program.use_program();
 
-    application.run(|| {
+    let target_fps = 60;
+    let frame_duration = Duration::from_secs_f32(1.0 / target_fps as f32);
+
+    let mut last_frame_time = Instant::now();
+
+    application.run(|window| {
+        let frame_start = Instant::now();
         shader_program.set_uniform_vec3("u_Color", &my_vector);
 
         unsafe {
@@ -84,6 +88,16 @@ fn main() -> Result<(), Box<dyn Error>> {
                 gl::UNSIGNED_INT,
                 std::ptr::null())
         }
+
+        let elapsed_time = frame_start.elapsed();
+        if elapsed_time < frame_duration {
+            thread::sleep(frame_duration - elapsed_time);
+        }
+
+        let delta_time = last_frame_time.elapsed();
+        window.set_title(&format!("Trident Engine - OpenGL | Delta time: {:.2?}", delta_time))
+            .expect("TODO: panic message");
+        last_frame_time = Instant::now();
 
     }).expect("Failed to run SDL application");
 

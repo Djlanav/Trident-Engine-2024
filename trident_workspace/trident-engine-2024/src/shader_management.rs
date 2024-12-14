@@ -178,7 +178,7 @@ impl Shader {
     /// `some_dir/my_shader.glsl`
     #[cfg(debug_assertions)]
     pub fn load_shader_source(source_path: &str) -> Result<String, Box<dyn Error>> {
-        let formatted_path = format!("src/shaders/{}", source_path.to_string());
+        let formatted_path = format!("trident-engine-2024/shaders/{}", source_path.to_string());
 
         let shader_path = Path::new(&formatted_path);
         let mut shader_file = File::open(shader_path)?;

@@ -2,6 +2,7 @@ use crate::opengl_utils::check_gl;
 use gl::types::{GLboolean, GLenum, GLsizei};
 use std::any::Any;
 use std::os::raw::c_void;
+use log::error;
 
 pub enum BufferType {
     ArrayBuffer,
@@ -110,8 +111,16 @@ impl VertexArrayObject {
         }
     }
 
-    pub fn add_attrib_pointer(&mut self, attrib_pointer: VertexAttributePointer) {
-        self.attrib_pointers.push(attrib_pointer);
+    pub fn set_attrib_pointer(&self, index: usize) {
+        let pointer =  match self.attrib_pointers.get(index) {
+            Some(pointer) => pointer,
+            None => {
+                error!("No attrib pointer at index {}", index);
+                return;
+            },
+        };
+
+        pointer.set_attrib_pointer();
     }
 
     pub fn enable_attrib_pointers(&self) {
@@ -155,32 +164,37 @@ pub struct VertexAttributePointer {
     data_type: GLenum,
     normalized: GLboolean,
     stride: GLsizei,
-    offset: u32,
+    offset: usize,
 }
 
 impl VertexAttributePointer {
-    pub fn new(data_tuple: (u32, i32, GLenum, GLboolean, GLsizei, u32)) -> Self {
+    pub fn new(data_tuple: (u32, i32, GLenum, GLboolean, usize, usize)) -> Self {
         let (index,
             size,
             data_type,
             normalized,
-            stride,
+            _stride,
             offset) = data_tuple;
-
-        unsafe {
-            // TODO: Fix invalid OpenGL operation error caused by this call
-            gl::VertexAttribPointer(index, size, data_type, normalized, stride, offset as *const c_void);
-
-            check_gl();
-        }
 
         Self {
             index,
             size,
             data_type,
             normalized,
-            stride,
+            stride: data_tuple.4 as GLsizei,
             offset,
+        }
+    }
+
+    pub fn set_attrib_pointer(&self) {
+        unsafe {
+            gl::VertexAttribPointer(
+                self.index,
+                self.size,
+                self.data_type,
+                self.normalized,
+                self.stride,
+                self.offset as *const c_void);
         }
     }
 
