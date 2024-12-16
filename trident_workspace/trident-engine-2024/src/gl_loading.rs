@@ -1,25 +1,29 @@
-use crate::opengl_utils::check_gl;
 use gl::types::{GLboolean, GLenum, GLsizei};
 use std::any::Any;
+use std::ops::Deref;
 use std::os::raw::c_void;
 use log::error;
+use crate::opengl_utils::check_opengl_error;
 
 pub enum BufferType {
     ArrayBuffer,
     ElementArrayBuffer,
 }
 
-pub struct BufferObject<'buffer_lifetime, T>
+pub struct BufferObject<T>
 where
-    T: Sized + 'static
+    T: Sized + 'static + Clone
 {
     id: u32,
     buffer_type: BufferType,
-    data: &'buffer_lifetime [T],
+    data: Vec<T>,
 }
 
-impl<'buffer_lifetime, T: 'static> BufferObject<'buffer_lifetime, T> {
-    pub fn new(data: &'buffer_lifetime [T], buffer_type: BufferType) -> Self {
+impl<T: 'static + Clone> BufferObject<T> {
+    pub fn new<B>(data: B, buffer_type: BufferType) -> Self
+    where
+        B: Into<Vec<T>> + Deref<Target=[T]>,
+    {
         assert!(!data.is_empty());
         let mut id = 0;
 
@@ -30,7 +34,7 @@ impl<'buffer_lifetime, T: 'static> BufferObject<'buffer_lifetime, T> {
                     gl::BindBuffer(gl::ARRAY_BUFFER, id);
                     gl::BufferData(
                         gl::ARRAY_BUFFER,
-                        size_of_val(data) as isize,
+                        size_of_val(&data) as isize,
                         data.as_ptr() as *const c_void,
                         gl::STATIC_DRAW);
                 },
@@ -45,16 +49,17 @@ impl<'buffer_lifetime, T: 'static> BufferObject<'buffer_lifetime, T> {
 
                     gl::BufferData(
                         gl::ELEMENT_ARRAY_BUFFER,
-                        size_of_val(data) as isize,
+                        size_of_val(&data) as isize,
                         data.as_ptr() as *const c_void,
                         gl::STATIC_DRAW);
                 },
             }
 
-            check_gl();
+            #[cfg(debug_assertions)]
+            check_opengl_error("gl_loading", 55);
         }
 
-        Self {id, data, buffer_type}
+        Self {id, data: data.to_vec(), buffer_type}
     }
 
     pub fn bind(&self) {
@@ -64,7 +69,8 @@ impl<'buffer_lifetime, T: 'static> BufferObject<'buffer_lifetime, T> {
                 BufferType::ElementArrayBuffer => gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, self.id),
             }
 
-            check_gl();
+            #[cfg(debug_assertions)]
+            check_opengl_error("gl_loading", 69);
         }
     }
 
@@ -75,19 +81,24 @@ impl<'buffer_lifetime, T: 'static> BufferObject<'buffer_lifetime, T> {
                 BufferType::ElementArrayBuffer => gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, 0),
             }
 
-            check_gl();
+            #[cfg(debug_assertions)]
+            check_opengl_error("gl_loading", 81);
         }
     }
 }
 
-impl<T: 'static> Drop for BufferObject<'_, T> {
+impl<T> Drop for BufferObject<T>
+where
+    T: Sized + 'static + Clone
+{
     fn drop(&mut self) {
         self.unbind();
 
         unsafe {
             gl::DeleteBuffers(1, &self.id);
 
-            check_gl();
+            #[cfg(debug_assertions)]
+            check_opengl_error("gl_loading", 94);
         }
     }
 }
@@ -103,7 +114,8 @@ impl VertexArrayObject {
         unsafe {
             gl::GenVertexArrays(1, &mut id);
 
-            check_gl();
+            #[cfg(debug_assertions)]
+            check_opengl_error("gl_loading", 111);
         }
 
         Self {
@@ -133,7 +145,8 @@ impl VertexArrayObject {
         unsafe {
             gl::BindVertexArray(self.id);
 
-            check_gl();
+            #[cfg(debug_assertions)]
+            check_opengl_error("gl_loading", 142);
         }
     }
 
@@ -141,7 +154,8 @@ impl VertexArrayObject {
         unsafe {
             gl::BindVertexArray(0);
 
-            check_gl();
+            #[cfg(debug_assertions)]
+            check_opengl_error("gl_loading", 151);
         }
     }
 }
@@ -153,7 +167,8 @@ impl Drop for VertexArrayObject {
         unsafe {
             gl::DeleteVertexArrays(1, &self.id);
 
-            check_gl();
+            #[cfg(debug_assertions)]
+            check_opengl_error("gl_loading", 164);
         }
     }
 }
@@ -202,7 +217,8 @@ impl VertexAttributePointer {
         unsafe {
             gl::EnableVertexAttribArray(self.index);
 
-            check_gl();
+            #[cfg(debug_assertions)]
+            check_opengl_error("gl_loading", 214);
         }
     }
 }

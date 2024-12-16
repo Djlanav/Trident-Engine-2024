@@ -27,7 +27,7 @@ impl Application {
 
         let window = video
             .window(
-                format!("Trident Engine - OpenGL").as_str(),
+                "Trident Engine - OpenGL".to_string().as_str(),
                 800,
                 600)
             .position_centered()

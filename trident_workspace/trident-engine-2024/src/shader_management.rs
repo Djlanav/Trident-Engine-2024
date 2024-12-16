@@ -8,8 +8,9 @@ use std::io::Read;
 use std::path::Path;
 use std::ptr;
 use log::{error, info};
-use crate::engine_types::{Vector3, Vector4};
-use crate::opengl_utils::check_gl;
+use nalgebra_glm::Vec3;
+use nalgebra_glm::Vec4;
+use crate::opengl_utils::check_opengl_error;
 
 #[derive(Clone)]
 pub enum ShaderType {
@@ -35,7 +36,8 @@ impl Drop for ShaderProgram {
         unsafe {
             gl::DeleteProgram(self.program_id);
 
-            check_gl();
+            #[cfg(debug_assertions)]
+            check_opengl_error("shader_management", 39);
         }
     }
 }
@@ -48,6 +50,7 @@ impl ShaderProgram {
         for shader in shaders.iter() {
             unsafe {
                 gl::AttachShader(program_id, shader.shader_id);
+                check_opengl_error("shader_management", 52);
             }
         }
 
@@ -101,18 +104,19 @@ impl ShaderProgram {
         }
     }
 
-    pub fn set_uniform_vec3(&self, location: &str, vector: &Vector3<f32>) {
+    pub fn set_uniform_vec3(&self, location: &str, vector: &Vec3) {
         let location_int = self.uniforms.get(location).unwrap();
         unsafe {
             gl::Uniform3f(*location_int, vector.x, vector.y, vector.z);
         }
     }
 
-    pub fn set_uniform_vec4(&self, location: &str, vector: &Vector4<f32>) {
+    pub fn set_uniform_vec4(&self, location: &str, vector: &Vec4) {
         let location_int = self.uniforms.get(location).unwrap();
         unsafe {
             gl::Uniform4f(*location_int, vector.x, vector.y, vector.z, vector.w);
-            check_gl();
+            #[cfg(debug_assertions)]
+            check_opengl_error("shader_management", 118);
         }
     }
 
@@ -121,7 +125,8 @@ impl ShaderProgram {
         let uname_cstr = CString::new(uname_string.as_bytes()).unwrap();
         unsafe {
             let location = gl::GetUniformLocation(self.program_id, uname_cstr.as_ptr());
-            check_gl();
+            #[cfg(debug_assertions)]
+            check_opengl_error("shader_management", 128);
 
             (uname_string, location)
         }

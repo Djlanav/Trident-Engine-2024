@@ -3,19 +3,18 @@ mod shader_management;
 mod shader_errors;
 mod application;
 mod opengl_utils;
-mod engine_types;
-mod macros;
-mod client;
+mod game;
+mod texture_management;
 
+use crate::application::Application;
+use crate::gl_loading::{BufferObject, BufferType, VertexArrayObject, VertexAttributePointer};
+use crate::shader_management::{Shader, ShaderProgram, ShaderType};
+use crate::texture_management::TextureLoader;
 use std::error::Error;
 use std::ops::Add;
 use std::thread;
 use std::time::{Duration, Instant};
-use log::info;
-use crate::application::Application;
-use crate::engine_types::{Vector3, Vector4};
-use crate::gl_loading::{VertexArrayObject, VertexAttributePointer, BufferObject, BufferType};
-use crate::shader_management::{Shader, ShaderProgram, ShaderType};
+use nalgebra_glm::Vec3;
 
 fn make_shader_stuff() -> ShaderProgram{
     let vertex_source = Shader::load_shader_source("main_vertex.glsl")
@@ -38,10 +37,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut application = Application::new().expect("Failed to init SDL");
     let vertices = [
-        -0.5f32, 0.5, 0.0, 1.0, 0.0, 0.0, // Vertex 0
-        -0.5, -0.5, 0.0, 0.0, 1.0, 0.0, // Vertex 1
-        0.5, -0.5, 0.0, 0.0, 0.0, 1.0, // Vertex 2
-        0.5, 0.5, 0.0, 0.0, 0.0, 0.0 // Vertex 3
+        -0.5f32, 0.5, 0.0, 1.0f32, 0.0, 0.0, 0.0, 1.0, // Vertex 0
+        -0.5f32, -0.5, 0.0, 0.0f32, 1.0, 0.0, 0.0, 0.0, // Vertex 1
+        0.5f32, -0.5, 0.0, 0.0f32, 0.0, 1.0, 1.0, 0.0, // Vertex 2
+        0.5f32, 0.5, 0.0, 0.0f32, 0.0, 0.0, 1.0, 1.0, // Vertex 3
     ];
 
     let indices = [
@@ -49,9 +48,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         2, 3, 0,
     ];
 
+    let stride_multiplier = 8;
     let mut vao = VertexArrayObject::new(vec![
-        VertexAttributePointer::new((0, 3, gl::FLOAT, gl::FALSE, 6 * size_of::<f32>(), 0)),
-        VertexAttributePointer::new((1, 3, gl::FLOAT, gl::FALSE, 6 * size_of::<f32>(), 3 * size_of::<f32>())),
+        VertexAttributePointer::new((0, 3, gl::FLOAT, gl::FALSE,
+                                     stride_multiplier * size_of::<f32>(), 0)),
+        VertexAttributePointer::new((1, 3, gl::FLOAT, gl::FALSE,
+                                     stride_multiplier * size_of::<f32>(), 3 * size_of::<f32>())),
+        VertexAttributePointer::new((2, 2, gl::FLOAT, gl::FALSE,
+                                     stride_multiplier * size_of::<f32>(), 6 * size_of::<f32>()))
     ]);
 
     let vbo = BufferObject::new(&vertices, BufferType::ArrayBuffer);
@@ -63,11 +67,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     vao.set_attrib_pointer(0);
     vao.set_attrib_pointer(1);
+    vao.set_attrib_pointer(2);
     vao.enable_attrib_pointers();
 
+    let mut texture_loader = TextureLoader::new();
     let mut shader_program = make_shader_stuff();
 
-    let my_vector = Vector3::new(0.5, 0.0, 0.7);
+    let my_vector = Vec3::new(0.5, 0.0, 0.7);
     shader_program.get_uniform_locations(&["u_Color"]);
     shader_program.use_program();
 
@@ -75,6 +81,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let frame_duration = Duration::from_secs_f32(1.0 / target_fps as f32);
 
     let mut last_frame_time = Instant::now();
+
+    texture_loader.load_texture("trident-engine-2024/res/textures/grass.png");
 
     application.run(|window| {
         let frame_start = Instant::now();
@@ -95,8 +103,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
 
         let delta_time = last_frame_time.elapsed();
-        window.set_title(&format!("Trident Engine - OpenGL | Delta time: {:.2?}", delta_time))
-            .expect("TODO: panic message");
+        let new_title = format!("Trident Engine - OpenGL | Delta time: {:.2?}", delta_time);
+        window.set_title(&new_title).expect("TODO: panic message");
         last_frame_time = Instant::now();
 
     }).expect("Failed to run SDL application");

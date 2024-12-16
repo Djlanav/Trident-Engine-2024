@@ -1,2 +1,2 @@
 pub mod mesh_management;
-pub mod singletons;
+pub mod services;

@@ -1,5 +1,5 @@
 [workspace]
-members = [
+members = [ "client",
     "trident-engine-2024"
 ]
 resolver = "2"

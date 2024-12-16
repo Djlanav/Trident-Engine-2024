@@ -1,27 +1,18 @@
 use log::{error, info};
 
-#[cfg(debug_assertions)]
-fn check_opengl_error() {
+pub fn check_opengl_error(file_name: &str, line_number: u32) {
     unsafe {
         let gl_error = gl::GetError();
 
         match gl_error {
-            gl::NO_ERROR => info!("OpenGL Status: No error"),
-            gl::INVALID_ENUM => error!("OpenGL Status: Invalid OpenGL enum value"),
-            gl::INVALID_VALUE => error!("OpenGL Status: Invalid OpenGL value"),
-            gl::INVALID_OPERATION => error!("OpenGL Status: Invalid OpenGL operation"),
-            gl::INVALID_FRAMEBUFFER_OPERATION => error!("OpenGL Status: Invalid OpenGL framebuffer operation"),
-            gl::OUT_OF_MEMORY => error!("OpenGL Status: Out of OpenGL memory"),
-            gl::STACK_UNDERFLOW => error!("OpenGL stack underflow"),
-            gl::STACK_OVERFLOW => error!("OpenGL stack overflow"),
-            _ => panic!("OpenGL error: {}", gl_error)
+            gl::INVALID_ENUM => error!("OpenGL Status: Invalid OpenGL enum value at line {} in file {}", line_number, file_name),
+            gl::INVALID_VALUE => error!("OpenGL Status: Invalid OpenGL value at line {} in file {}", line_number, file_name),
+            gl::INVALID_OPERATION => error!("OpenGL Status: Invalid OpenGL operation at line {} in file {}", line_number, file_name),
+            gl::INVALID_FRAMEBUFFER_OPERATION => error!("OpenGL Status: Invalid OpenGL framebuffer operation at line {} in file {}", line_number, file_name),
+            gl::OUT_OF_MEMORY => error!("OpenGL Status: Out of OpenGL memory at line {} in file {}", line_number, file_name),
+            gl::STACK_UNDERFLOW => error!("OpenGL stack underflow at line {} in file {}", line_number, file_name),
+            gl::STACK_OVERFLOW => error!("OpenGL stack overflow at line {} in file {}", line_number, file_name),
+            _ => {},
         }
-    }
-}
-
-#[inline(always)]
-pub fn check_gl() {
-    if cfg!(debug_assertions) {
-        check_opengl_error();
     }
 }
