@@ -5,6 +5,7 @@ mod application;
 mod opengl_utils;
 mod game;
 mod texture_management;
+mod rendering;
 
 use crate::application::Application;
 use crate::gl_loading::{BufferObject, BufferType, VertexArrayObject, VertexAttributePointer};
@@ -14,6 +15,7 @@ use std::error::Error;
 use std::ops::Add;
 use std::thread;
 use std::time::{Duration, Instant};
+use libloading::Library;
 use nalgebra_glm::Vec3;
 
 fn make_shader_stuff() -> ShaderProgram{
@@ -32,7 +34,8 @@ fn make_shader_stuff() -> ShaderProgram{
     shader_program
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+#[async_std::main]
+async fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
 
     let mut application = Application::new().expect("Failed to init SDL");

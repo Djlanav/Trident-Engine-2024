@@ -64,7 +64,6 @@ impl Application {
     {
         self.running = true;
         let event_pump = &mut self.event_pump;
-        // let window = &self.window;
 
         unsafe {
             gl::ClearColor(0.0, 0.6, 0.8, 1.0);

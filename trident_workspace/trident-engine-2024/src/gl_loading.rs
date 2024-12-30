@@ -2,6 +2,7 @@ use gl::types::{GLboolean, GLenum, GLsizei};
 use std::any::Any;
 use std::ops::Deref;
 use std::os::raw::c_void;
+use std::sync::Arc;
 use log::error;
 use crate::opengl_utils::check_opengl_error;
 
@@ -16,15 +17,17 @@ where
 {
     id: u32,
     buffer_type: BufferType,
-    data: Vec<T>,
+    data: Arc<Vec<T>>,
 }
 
-impl<T: 'static + Clone> BufferObject<T> {
+impl<'a, T: 'static + Clone> BufferObject<T> {
     pub fn new<B>(data: B, buffer_type: BufferType) -> Self
     where
-        B: Into<Vec<T>> + Deref<Target=[T]>,
+        B: Into<Vec<T>> + AsRef<[T]>,
     {
+        let data = data.as_ref();
         assert!(!data.is_empty());
+        
         let mut id = 0;
 
         unsafe {
@@ -58,8 +61,11 @@ impl<T: 'static + Clone> BufferObject<T> {
             #[cfg(debug_assertions)]
             check_opengl_error("gl_loading", 55);
         }
-
-        Self {id, data: data.to_vec(), buffer_type}
+        Self {
+            id,
+            data: Arc::new(data.into()),
+            buffer_type,
+        }
     }
 
     pub fn bind(&self) {
@@ -85,6 +91,14 @@ impl<T: 'static + Clone> BufferObject<T> {
             check_opengl_error("gl_loading", 81);
         }
     }
+
+    pub fn get_data(&'a self) -> &'a Vec<T> {
+        &self.data
+    }
+
+    pub fn get_data_len(&self) -> usize {
+        self.data.len()
+    }
 }
 
 impl<T> Drop for BufferObject<T>
@@ -92,20 +106,21 @@ where
     T: Sized + 'static + Clone
 {
     fn drop(&mut self) {
+
         self.unbind();
 
         unsafe {
             gl::DeleteBuffers(1, &self.id);
 
             #[cfg(debug_assertions)]
-            check_opengl_error("gl_loading", 94);
+            check_opengl_error("gl_loading", 109);
         }
     }
 }
 
 pub struct VertexArrayObject {
     id: u32,
-    attrib_pointers: Vec<VertexAttributePointer>
+    attrib_pointers: Arc<Vec<VertexAttributePointer>>
 }
 
 impl VertexArrayObject {
@@ -115,11 +130,11 @@ impl VertexArrayObject {
             gl::GenVertexArrays(1, &mut id);
 
             #[cfg(debug_assertions)]
-            check_opengl_error("gl_loading", 111);
+            check_opengl_error("gl_loading", 126);
         }
 
         Self {
-            id, attrib_pointers
+            id, attrib_pointers: Arc::new(attrib_pointers)
         }
     }
 
